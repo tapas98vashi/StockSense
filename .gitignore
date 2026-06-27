@@ -35,4 +35,13 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# plain .env (created by `prisma init` -- may contain real DATABASE_URL)
+.env
+
+# prisma generated client (regenerated via `npx prisma generate`)
 /lib/generated/prisma
+/node_modules/.prisma
+
+# prisma studio
+.prisma
+
