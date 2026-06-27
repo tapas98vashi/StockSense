@@ -8,9 +8,12 @@ import { METRIC_CONFIGS } from "@/lib/valuationBands";
 
 // Illustrative values shown on the gauges for each metric's worked example
 const EXAMPLE_VALUES: Record<string, number> = {
-  pe:        25,  // The worked example: P/E = 25×
-  forwardPe: 20,  // The worked example: Fwd P/E = 20×
+  pe:        25,   // The worked example: P/E = 25×
+  forwardPe: 20,   // The worked example: Fwd P/E = 20×
   peg:       1.25, // The worked example: PEG = 1.25
+  pb:        1.5,  // The worked example: P/B = 1.5×
+  roe:       20,   // The worked example: ROE = 20%
+  divYield:  5.0,  // The worked example: Dividend Yield = 5.0%
 };
 
 const ANCHOR_LINKS = METRIC_CONFIGS.map((m) => ({
@@ -90,7 +93,7 @@ export default function LearnPage() {
               Learn the Metrics
             </h1>
             <p className="text-lg text-gray-500 dark:text-gray-400 leading-relaxed max-w-xl mx-auto">
-              The three most-used stock valuation ratios — explained clearly, with formulas,
+              Six essential stock metrics — explained clearly, with formulas,
               examples, and interactive gauges showing where each benchmark sits.
             </p>
           </motion.div>

@@ -1,12 +1,12 @@
 "use client";
 // components/ValuationGauge.tsx
-// Reusable horizontal gauge bar — used by both Learn page (examples) and 
+// Reusable horizontal gauge bar — used by both Learn page (examples) and
 // Lookup page (live metrics).  Reads zone config from /lib/valuationBands.ts
 // so the thresholds are always in sync.
-import { GAUGE_MAX, getZoneWidths, classifyMetric } from "@/lib/valuationBands";
+import { GAUGE_MAX, getZoneWidths, classifyMetric, MetricId } from "@/lib/valuationBands";
 
 interface ValuationGaugeProps {
-  metricId: "pe" | "forwardPe" | "peg";
+  metricId: MetricId;
   value?: number | null;      // actual value to mark; omit on Learn page for illustrative mode
   showValue?: boolean;
   size?: "sm" | "md" | "lg";
@@ -30,6 +30,11 @@ export default function ValuationGauge({
   const hasValue    = value != null && isFinite(value) && value > 0;
   const pct         = hasValue ? Math.min(100, (value! / max) * 100) : null;
   const { zone } = classifyMetric(metricId, value);
+
+  // Format the badge value: percentage metrics get "%" suffix, others get "×"
+  const isPercentMetric = metricId === "roe" || metricId === "divYield";
+  const badgeSuffix = isPercentMetric ? "%" : "×";
+  const badgeDecimals = metricId === "peg" || metricId === "pb" || metricId === "divYield" ? 2 : 1;
 
   return (
     <div className="w-full select-none">
@@ -64,7 +69,7 @@ export default function ValuationGauge({
         )}
       </div>
 
-      {/* Tick labels */}
+      {/* Tick labels — driven by tickLabel field from valuationBands.ts */}
       <div className="flex justify-between mt-1">
         {zones.map((z, tIdx) => (
           <span
@@ -72,11 +77,7 @@ export default function ValuationGauge({
             className={`${sz.label} text-gray-400 dark:text-gray-500`}
             style={{ width: `${z.pct}%`, textAlign: tIdx === 0 ? "left" : tIdx === zones.length - 1 ? "right" : "center" }}
           >
-            {tIdx < zones.length - 1
-              ? metricId === "peg"
-                ? (tIdx === 0 ? "0" : tIdx === 1 ? "1.0" : "2.0")
-                : (tIdx === 0 ? "0" : tIdx === 1 ? "15" : tIdx === 2 ? "25" : "35")
-              : `${max}+`}
+            {tIdx < zones.length - 1 ? z.tickLabel : `${max}+`}
           </span>
         ))}
       </div>
@@ -88,7 +89,7 @@ export default function ValuationGauge({
             className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold text-white"
             style={{ backgroundColor: zone.hexColor }}
           >
-            {value!.toFixed(metricId === "peg" ? 2 : 1)}×
+            {value!.toFixed(badgeDecimals)}{badgeSuffix}
           </span>
           <span className={`${sz.text} font-medium`} style={{ color: zone.hexColor }}>
             {zone.label}
