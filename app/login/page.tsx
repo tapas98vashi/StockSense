@@ -1,9 +1,9 @@
 "use client";
 // app/login/page.tsx
 // Sign In / Create Account page — matches existing app design system exactly.
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import { TrendingUp, Eye, EyeOff, Loader2, AlertCircle, CheckCircle } from "lucide-react";
 import Link from "next/link";
