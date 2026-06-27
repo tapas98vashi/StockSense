@@ -1,9 +1,15 @@
 // middleware.ts
 // Defense layer 1 of 3 for admin protection.
 // Also gates /api/stock and /api/news behind authentication (Stock Lookup requires sign-in).
-import { auth } from "@/auth";
+//
+// IMPORTANT: imports from auth.config.ts (Edge-safe — no Prisma/bcrypt),
+// NOT from auth.ts (Node.js only). This is required for Vercel Edge Runtime.
+import NextAuth from "next-auth";
+import { authConfig } from "@/auth.config";
 import { NextResponse } from "next/server";
 import type { NextAuthRequest } from "next-auth";
+
+const { auth } = NextAuth(authConfig);
 
 export default auth(function middleware(req: NextAuthRequest) {
   const { pathname } = req.nextUrl;

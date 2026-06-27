@@ -1,21 +1,19 @@
 // auth.ts
-// Auth.js v5 (next-auth@beta) configuration — server-side only.
-// Providers: Google OAuth + Credentials (email/password).
-// Strategy: JWT (no session table; role + id embedded in token).
-// Events: signIn → logs LoginEvent + updates lastLoginAt.
-import NextAuth, { type NextAuthConfig } from "next-auth";
+// Full Auth.js v5 config — Node.js runtime only (API routes + server components).
+// DO NOT import this from middleware.ts — use auth.config.ts there instead.
+import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { authConfig } from "@/auth.config";
 import type { Role } from "@prisma/client";
 
-export const authConfig: NextAuthConfig = {
-  adapter: PrismaAdapter(prisma),
+export const { handlers, signIn, signOut, auth } = NextAuth({
+  ...authConfig,
 
-  // JWT sessions — no Session table writes needed, keeps free-tier DB lean
-  session: { strategy: "jwt" },
+  adapter: PrismaAdapter(prisma),
 
   providers: [
     GoogleProvider({
@@ -84,11 +82,4 @@ export const authConfig: NextAuthConfig = {
       ]);
     },
   },
-
-  pages: {
-    signIn: "/login",
-    error:  "/login",
-  },
-};
-
-export const { handlers, signIn, signOut, auth } = NextAuth(authConfig);
+});
