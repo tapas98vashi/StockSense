@@ -2,22 +2,89 @@
 // components/Navbar.tsx
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
-import { TrendingUp, Moon, Sun, Menu, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { TrendingUp, Moon, Sun, Menu, X, LogIn, LogOut, Shield, ChevronDown } from "lucide-react";
+import { useSession, signOut } from "next-auth/react";
 
 const NAV_LINKS = [
-  { href: "/",       label: "Home"           },
+  { href: "/",       label: "Home"              },
   { href: "/learn",  label: "Learn the Metrics" },
-  { href: "/lookup", label: "Stock Lookup"    },
+  { href: "/lookup", label: "Stock Lookup"       },
 ];
 
+// ─── User avatar / dropdown ───────────────────────────────────────────────────
+function UserMenu({ name, role }: { name: string; role?: string }) {
+  const [open, setOpen] = useState(false);
+  const ref             = useRef<HTMLDivElement>(null);
+  const initials        = name.split(" ").map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+
+  // Close on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+        aria-label="User menu"
+      >
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-indigo-600 text-white text-xs font-bold shrink-0">
+          {initials}
+        </span>
+        <span className="hidden sm:block text-sm font-medium text-gray-700 dark:text-gray-300 max-w-[100px] truncate">
+          {name}
+        </span>
+        <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`} />
+      </button>
+
+      {open && (
+        <div className="absolute right-0 mt-1.5 w-48 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 shadow-xl overflow-hidden z-50">
+          <div className="px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+            <p className="text-xs font-semibold text-gray-900 dark:text-white truncate">{name}</p>
+            {role === "ADMIN" && (
+              <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400">
+                <Shield className="w-2.5 h-2.5" />
+                ADMIN
+              </span>
+            )}
+          </div>
+          {role === "ADMIN" && (
+            <Link
+              href="/admin"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-2 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+            >
+              <Shield className="w-4 h-4 text-amber-500" />
+              Admin Dashboard
+            </Link>
+          )}
+          <button
+            onClick={() => { setOpen(false); signOut({ callbackUrl: "/" }); }}
+            className="flex w-full items-center gap-2 px-4 py-2.5 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          >
+            <LogOut className="w-4 h-4 text-gray-400" />
+            Sign Out
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Main Navbar ──────────────────────────────────────────────────────────────
 export default function Navbar() {
   const pathname             = usePathname();
-  const [dark,  setDark]     = useState(false);
-  const [open,  setOpen]     = useState(false);
+  const { data: session, status } = useSession();
+  const [dark,     setDark]     = useState(false);
+  const [open,     setOpen]     = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
-  // Sync with system preference on mount
   useEffect(() => {
     const stored = localStorage.getItem("theme");
     const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
@@ -38,6 +105,8 @@ export default function Navbar() {
     document.documentElement.classList.toggle("dark", next);
     localStorage.setItem("theme", next ? "dark" : "light");
   }
+
+  const isLoggedIn = status === "authenticated" && session?.user;
 
   return (
     <header
@@ -89,6 +158,24 @@ export default function Navbar() {
             {dark ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
           </button>
 
+          {/* Auth area */}
+          {status !== "loading" && (
+            isLoggedIn ? (
+              <UserMenu
+                name={session.user.name ?? session.user.email ?? "User"}
+                role={session.user.role}
+              />
+            ) : (
+              <Link
+                href="/login"
+                className="flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold transition-colors shadow-sm"
+              >
+                <LogIn className="w-3.5 h-3.5" />
+                Sign In
+              </Link>
+            )
+          )}
+
           {/* Mobile menu button */}
           <button
             onClick={() => setOpen((o) => !o)}
@@ -120,6 +207,39 @@ export default function Navbar() {
               </Link>
             );
           })}
+          {/* Mobile auth */}
+          <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+            {isLoggedIn ? (
+              <>
+                {session.user.role === "ADMIN" && (
+                  <Link
+                    href="/admin"
+                    onClick={() => setOpen(false)}
+                    className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/20 transition-colors"
+                  >
+                    <Shield className="w-4 h-4" />
+                    Admin Dashboard
+                  </Link>
+                )}
+                <button
+                  onClick={() => { setOpen(false); signOut({ callbackUrl: "/" }); }}
+                  className="flex w-full items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                >
+                  <LogOut className="w-4 h-4 text-gray-400" />
+                  Sign Out
+                </button>
+              </>
+            ) : (
+              <Link
+                href="/login"
+                onClick={() => setOpen(false)}
+                className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 transition-colors"
+              >
+                <LogIn className="w-4 h-4" />
+                Sign In
+              </Link>
+            )}
+          </div>
         </div>
       )}
     </header>

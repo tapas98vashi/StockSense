@@ -2,6 +2,7 @@
 // app/lookup/page.tsx — Feature 2: Stock Lookup & Analysis
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Search,
@@ -11,6 +12,7 @@ import {
   Newspaper,
   Info,
   ExternalLink,
+  LogIn,
 } from "lucide-react";
 import SearchBar from "@/components/SearchBar";
 import StockHeader from "@/components/StockHeader";
@@ -256,6 +258,7 @@ function ErrorState({ message, ticker }: { message: string; ticker: string }) {
 function LookupContent() {
   const searchParams          = useSearchParams();
   const router                = useRouter();
+  const { status }            = useSession();
   const [ticker,    setTicker]    = useState(searchParams.get("ticker") ?? "");
   const [stockData, setStockData] = useState<StockData | null>(null);
   const [loading,   setLoading]   = useState(false);
@@ -309,6 +312,21 @@ function LookupContent() {
             Search a U.S. ticker to see live P/E, Forward P/E, and PEG ratios — with a
             plain-language valuation summary and the latest news.
           </p>
+          {/* Auth gate banner — shown before they try to search */}
+          {status === "unauthenticated" && (
+            <div className="max-w-xl mx-auto mb-5 flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 text-sm">
+              <span className="text-amber-700 dark:text-amber-300 font-medium text-left">
+                Sign in to search stocks.
+              </span>
+              <Link
+                href="/login?callbackUrl=/lookup"
+                className="shrink-0 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold transition-colors"
+              >
+                <LogIn className="w-3 h-3" />
+                Sign In
+              </Link>
+            </div>
+          )}
           <SearchBar
             initialValue={ticker}
             onSelect={handleSelect}
@@ -404,6 +422,34 @@ function LookupContent() {
             <p className="text-base font-medium">Search for a ticker above to begin.</p>
             <p className="text-sm mt-1">Try AAPL, MSFT, TSLA, NVDA, or any U.S. stock symbol.</p>
           </div>
+        )}
+
+        {/* 401 gate — show friendly sign-in prompt when API returns 401 */}
+        {error?.includes("Sign in") && (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="mt-8 flex flex-col items-center text-center gap-4 py-16"
+          >
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-50 dark:bg-indigo-950/40">
+              <LogIn className="w-8 h-8 text-indigo-500" />
+            </div>
+            <div>
+              <h3 className="font-bold text-gray-900 dark:text-white text-lg mb-1">
+                Sign in to use Stock Lookup
+              </h3>
+              <p className="text-sm text-gray-500 dark:text-gray-400 max-w-sm">
+                Create a free account or sign in to search any U.S. ticker and view live valuation metrics.
+              </p>
+            </div>
+            <Link
+              href="/login?callbackUrl=/lookup"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-sm transition-colors shadow-sm"
+            >
+              <LogIn className="w-4 h-4" />
+              Sign In or Create Account
+            </Link>
+          </motion.div>
         )}
       </div>
     </div>

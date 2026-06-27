@@ -1,6 +1,6 @@
 # StockSense AI
 
-An educational full-stack web app for learning and applying stock valuation metrics — built with Next.js 14, TypeScript, and Tailwind CSS.
+An educational full-stack web app for learning and applying stock valuation metrics — built with Next.js 14, TypeScript, Tailwind CSS, Auth.js v5, and Prisma + Neon Postgres.
 
 > **Disclaimer:** This tool is for educational purposes only and does not constitute financial advice. All valuation bands are general industry conventions — not regulations — and are not guarantees of future performance.
 
@@ -9,48 +9,49 @@ An educational full-stack web app for learning and applying stock valuation metr
 ## Features
 
 ### 1. Learn the Metrics (`/learn`)
-An interactive educational hub covering the three most-used stock valuation ratios:
-- **P/E Ratio** (trailing) — Price-to-Earnings
-- **Forward P/E** — based on analyst consensus estimates
-- **PEG Ratio** — P/E divided by expected growth rate (popularized by Peter Lynch)
+An interactive educational hub covering six stock valuation and quality metrics:
+- **P/E Ratio** (trailing), **Forward P/E**, **PEG Ratio**
+- **P/B Ratio** (Price-to-Book), **ROE** (Return on Equity), **Dividend Yield**
 
-Each metric includes:
-- Plain-language definition
-- The formula
-- A worked numeric example
-- An interactive valuation gauge (color-coded: green → yellow → red)
-- A caveat box with sector context
+Each metric includes a plain-language definition, formula, worked example, interactive valuation gauge, and a caveat box.
 
-### 2. Stock Lookup (`/lookup`)
-Search any U.S. ticker and get:
-- **Live header card** — name, logo, price, day change (color-coded), market cap, sector
-- **Valuation metrics panel** — Trailing P/E, Forward P/E, PEG, each with the same visual gauge used on the Learn page
-- **Trailing vs Forward signal** — auto-detects whether earnings are expected to grow or shrink
-- **Auto-generated valuation summary** — deterministic, rule-based commentary (not an LLM)
-- **News feed** — most recent articles, with earnings/guidance articles surfaced in a dedicated section
-- **Ticker autocomplete** — powered by Finnhub's search endpoint
+### 2. Stock Lookup (`/lookup`) — requires sign-in
+Search any U.S. ticker and get live valuation metrics, a rule-based summary, and the latest news headlines. Sign-in required to perform searches.
+
+### 3. Authentication
+- Sign in with **Google** or register with **email + password**
+- Session-aware navbar (Sign In button → avatar/dropdown when logged in)
+- Admin users see an "Admin Dashboard" link in their dropdown
+
+### 4. Admin Dashboard (`/admin`) — ADMIN role required
+- Summary cards: total users, new signups (7d), active today
+- Sign-up method breakdown chart (Google vs. Email)
+- Paginated, searchable, sortable user table
+- Recent sign-in activity feed
 
 ---
 
 ## Tech Stack
 
-| Layer         | Technology                                      |
-|---------------|--------------------------------------------------|
-| Framework     | Next.js 14 (App Router)                         |
-| Language      | TypeScript                                      |
-| Styling       | Tailwind CSS + dark mode                        |
-| Animations    | Framer Motion                                   |
-| Charting      | Recharts (available for extension)              |
-| Icons         | Lucide React                                    |
-| Primary API   | [Finnhub](https://finnhub.io) (free tier, 60 req/min) |
-| Fallback API  | [Alpha Vantage](https://www.alphavantage.co) (free tier, ~25 req/day) |
-| News          | Finnhub `/company-news` endpoint                |
+| Layer | Technology |
+|---|---|
+| Framework | Next.js 14 (App Router) |
+| Language | TypeScript |
+| Styling | Tailwind CSS + dark mode |
+| Animations | Framer Motion |
+| Auth | Auth.js v5 (next-auth@beta) |
+| ORM | Prisma v5 |
+| Database | Neon (free tier Postgres) |
+| Password hashing | bcryptjs |
+| Validation | Zod |
+| Primary API | Finnhub (free tier) |
+| Fallback API | Alpha Vantage (free tier) |
 
 ---
 
-## Getting Started
+## Setup — Local Development
 
-### 1. Clone the repo
+### Step 1 — Clone and install
 
 ```bash
 git clone <repo-url>
@@ -58,41 +59,94 @@ cd stocksense-ai
 npm install
 ```
 
-### 2. Get your free API keys
+---
 
-#### Finnhub (Required — primary data source)
+### Step 2 — Get your API keys
+
+#### Finnhub (Required — stock data)
 1. Go to [https://finnhub.io/register](https://finnhub.io/register)
-2. Sign up for a **free account** — no credit card required
-3. Copy your API key from the Dashboard → API Keys
-4. Free tier: 60 API calls/minute — more than enough for development
+2. Sign up (free, no credit card)
+3. Copy your key from Dashboard → API Keys
 
-#### Alpha Vantage (Optional — fallback only)
+#### Alpha Vantage (Optional — fallback)
 1. Go to [https://www.alphavantage.co/support/#api-key](https://www.alphavantage.co/support/#api-key)
 2. Enter your email to get a free key instantly
-3. **Note:** Free tier is limited to ~25 requests/day — used only as a fallback when Finnhub doesn't return certain fields (e.g. Forward P/E)
 
-#### NewsAPI (Optional — not currently used, available for extension)
-1. Go to [https://newsapi.org/register](https://newsapi.org/register)
-2. Free tier: 100 requests/day, developer use only
-3. The app currently uses Finnhub's `/company-news` endpoint instead
+---
 
-### 3. Set up environment variables
+### Step 3 — Set up Neon Postgres (free tier)
 
-Copy `.env.example` to `.env.local` and fill in your keys:
+**Option A — Via Vercel (recommended for deployment):**
+1. Push your project to GitHub and import it into Vercel
+2. In the Vercel dashboard → **Storage** tab → Add → **Neon**
+3. Vercel will create a Neon project and auto-populate `DATABASE_URL` and `DIRECT_URL` as environment variables
+4. Pull them to your local `.env.local` with: `vercel env pull .env.local`
+
+**Option B — Direct Neon setup (local dev first):**
+1. Go to [https://neon.tech](https://neon.tech) and sign up (free, no credit card)
+2. Create a new project (choose a region near you)
+3. In your project dashboard → **Connection Details**:
+   - Copy the **Pooled connection string** → use as `DATABASE_URL`
+   - Copy the **Direct connection string** → use as `DIRECT_URL`
+4. Add both to your `.env.local` (see Step 5)
+
+---
+
+### Step 4 — Create Google OAuth credentials
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com)
+2. Create a project (or use an existing one)
+3. Navigate to **APIs & Services → Credentials → Create Credentials → OAuth Client ID**
+4. Application type: **Web application**
+5. Add **Authorized redirect URIs**:
+   - For local dev: `http://localhost:3000/api/auth/callback/google`
+   - For production (add after deploying): `https://your-app.vercel.app/api/auth/callback/google`
+6. Copy the **Client ID** and **Client Secret**
+
+> ⚠️ **Important after deploying:** You MUST go back to Google Cloud Console and add your production Vercel URL as a second authorized redirect URI, or Google sign-in will fail in production even though it works locally.
+
+---
+
+### Step 5 — Configure environment variables
+
+Copy `.env.example` to `.env.local` and fill in all values:
 
 ```bash
 cp .env.example .env.local
 ```
 
 ```env
-FINNHUB_API_KEY=your_finnhub_api_key_here
-ALPHA_VANTAGE_API_KEY=your_alpha_vantage_key_here   # optional
-NEWS_API_KEY=your_newsapi_key_here                   # optional
+# Stock data APIs
+FINNHUB_API_KEY=your_finnhub_key
+ALPHA_VANTAGE_API_KEY=your_alpha_vantage_key   # optional
+NEWS_API_KEY=your_newsapi_key                   # optional
+
+# Auth.js — generate with: openssl rand -base64 32
+AUTH_SECRET=your_generated_secret
+
+# Google OAuth
+GOOGLE_CLIENT_ID=your_google_client_id
+GOOGLE_CLIENT_SECRET=your_google_client_secret
+
+# Neon Postgres
+DATABASE_URL=postgresql://...?sslmode=require   # pooled URL
+DIRECT_URL=postgresql://...?sslmode=require     # direct URL
 ```
 
-> **Important:** Never commit `.env.local` to version control. It is already in `.gitignore`. API keys are only used server-side (in `/app/api/` route handlers) — they are never exposed to the browser.
+---
 
-### 4. Run the development server
+### Step 6 — Run Prisma migration
+
+```bash
+npx prisma migrate dev --name init
+npx prisma generate
+```
+
+This creates all tables in your Neon database (User, Account, Session, VerificationToken, LoginEvent).
+
+---
+
+### Step 7 — Run the development server
 
 ```bash
 npm run dev
@@ -102,73 +156,104 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ---
 
+## Promoting yourself to ADMIN
+
+After signing up for an account, you need to manually promote it to ADMIN. You can do this two ways:
+
+**Option A — Prisma Studio (GUI):**
+```bash
+npx prisma studio
+```
+1. Opens a browser UI at `http://localhost:5555`
+2. Click the **User** model → find your account
+3. Change `role` from `USER` to `ADMIN` → Save
+
+**Option B — Neon SQL Editor (no local tools needed):**
+1. Open your Neon project dashboard → **SQL Editor**
+2. Run:
+```sql
+UPDATE "User" SET role = 'ADMIN' WHERE email = 'your@email.com';
+```
+
+> ⚠️ **Security:** ADMIN role can **only** be granted via a direct database update. There is no user-facing form or API route that can set a role — this is intentional.
+
+---
+
+## Deploying to Vercel
+
+1. Push to GitHub
+2. Import the repo in [Vercel](https://vercel.com)
+3. Add all environment variables from `.env.local` in **Project Settings → Environment Variables**:
+   - `AUTH_SECRET`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
+   - `DATABASE_URL`, `DIRECT_URL` (or use Vercel's Neon integration to auto-populate these)
+   - `FINNHUB_API_KEY`, `ALPHA_VANTAGE_API_KEY`
+4. Deploy
+5. Add your Vercel production URL as a redirect URI in Google Cloud Console (see Step 4)
+
+---
+
 ## Project Structure
 
 ```
 stocksense-ai/
 ├── app/
-│   ├── layout.tsx                    # Root layout (Navbar, Footer, dark mode init)
+│   ├── layout.tsx                    # Root layout (SessionProvider, Navbar, Footer)
 │   ├── page.tsx                      # Landing page
-│   ├── globals.css                   # Global Tailwind styles
+│   ├── globals.css
+│   ├── login/
+│   │   └── page.tsx                  # Sign In / Create Account
 │   ├── learn/
-│   │   └── page.tsx                  # Feature 1: Educational hub
+│   │   └── page.tsx                  # Educational hub (6 metrics)
 │   ├── lookup/
-│   │   └── page.tsx                  # Feature 2: Stock lookup & analysis
+│   │   └── page.tsx                  # Stock search (requires sign-in)
+│   ├── admin/
+│   │   ├── page.tsx                  # Server component — role check (layer 2)
+│   │   └── AdminDashboardClient.tsx  # Client UI for admin dashboard
 │   └── api/
-│       ├── search/route.ts           # GET /api/search?q=AAPL (ticker autocomplete)
-│       ├── stock/[ticker]/route.ts   # GET /api/stock/AAPL (quote + fundamentals)
-│       └── news/[ticker]/route.ts    # GET /api/news/AAPL (earnings + regular news)
+│       ├── auth/[...nextauth]/       # Auth.js route handler
+│       ├── register/                 # POST — create new credentials user
+│       ├── search/                   # GET — ticker autocomplete
+│       ├── stock/[ticker]/           # GET — live stock data (auth required)
+│       ├── news/[ticker]/            # GET — company news (auth required)
+│       └── admin/
+│           ├── stats/                # GET — summary card data
+│           ├── users/                # GET — paginated user list
+│           └── activity/             # GET — recent login events
 │
 ├── components/
-│   ├── Navbar.tsx                    # Sticky navbar with dark mode toggle
-│   ├── Footer.tsx                    # Footer with disclaimer
-│   ├── ValuationGauge.tsx            # Reusable colored horizontal gauge bar
-│   ├── MetricCard.tsx                # Full educational card (Learn page)
-│   ├── StockHeader.tsx               # Company header card (Lookup page)
-│   ├── SearchBar.tsx                 # Ticker search with autocomplete
-│   └── NewsCard.tsx                  # Individual news article card
+│   ├── Navbar.tsx                    # Session-aware: Sign In / avatar / admin link
+│   ├── Footer.tsx
+│   ├── ValuationGauge.tsx
+│   ├── MetricCard.tsx
+│   ├── StockHeader.tsx
+│   ├── SearchBar.tsx
+│   └── NewsCard.tsx
 │
 ├── lib/
-│   ├── valuationBands.ts             # ★ Single source of truth for all thresholds
-│   ├── financeApi.ts                 # Finnhub + Alpha Vantage client (server-only)
-│   └── valuationSummary.ts          # Deterministic valuation commentary generator
+│   ├── prisma.ts                     # Prisma client singleton
+│   ├── financeApi.ts                 # Finnhub + Alpha Vantage (server-only)
+│   ├── valuationBands.ts             # Single source of truth for all thresholds
+│   └── valuationSummary.ts          # Deterministic valuation commentary
 │
-├── .env.local                        # Your API keys (gitignored)
-├── .env.example                      # Template for env vars
-└── README.md
+├── auth.ts                           # Auth.js v5 config (providers, callbacks, events)
+├── middleware.ts                     # Route protection (admin + stock API auth gate)
+├── types/next-auth.d.ts              # Session type augmentation (id, role)
+├── prisma/
+│   └── schema.prisma                 # Prisma schema (User, Account, LoginEvent, etc.)
+├── .env.local                        # Local secrets (gitignored)
+└── .env.example                      # Template — copy to .env.local
 ```
 
 ---
 
-## Valuation Bands Reference
+## Security Model
 
-All bands are general industry conventions based on historical S&P 500 data — **not official regulations**.
-
-### P/E Ratio (Trailing) & Forward P/E
-| Range  | Zone             | Color  |
-|--------|------------------|--------|
-| < 15   | Potentially Undervalued | 🟢 Green |
-| 15–25  | Fairly Valued (S&P avg ~19-20×) | 🟡 Yellow |
-| 25–35  | Growth Premium   | 🟠 Orange |
-| > 35   | Overvalued / Expensive | 🔴 Red |
-
-### PEG Ratio
-| Range  | Zone             | Color  |
-|--------|------------------|--------|
-| < 1.0  | Undervalued vs Growth | 🟢 Green |
-| 1.0–2.0 | Fair (Lynch benchmark) | 🟡 Yellow |
-| > 2.0  | Growth Premium Stretched | 🔴 Red |
-
-All thresholds are defined in [`lib/valuationBands.ts`](lib/valuationBands.ts) — change them there to update everywhere consistently.
-
----
-
-## Architecture Notes
-
-- **API keys never leave the server.** All Finnhub and Alpha Vantage calls happen in `/app/api/` route handlers. Client components only call `/api/*` on the same origin.
-- **Valuation thresholds are defined once.** `lib/valuationBands.ts` is the single source of truth for all zone boundaries, colors, and labels. Both the Learn page and Lookup page import from this file.
-- **Valuation summary is deterministic.** `lib/valuationSummary.ts` generates commentary purely from conditional logic — no LLM, no randomness. The output is always consistent for the same inputs.
-- **Alpha Vantage is a last-resort fallback.** It's only called when Finnhub doesn't return a specific field (e.g. Forward P/E). Given the 25 req/day free limit, this keeps usage minimal.
+- **API keys** (Finnhub, Alpha Vantage) are server-side only — never exposed to the browser
+- **Passwords** are hashed with bcrypt (cost factor 12) and never logged or returned to clients
+- **Admin access** uses defense-in-depth: middleware (layer 1) + server page check (layer 2) + API route check (layer 3)
+- **ADMIN role** is only grantable via direct database access — no user-facing API can elevate privileges
+- **JWT sessions** embed `id` and `role` — no extra DB lookup needed per request
+- **`.env.local`** is gitignored via `.env*.local` glob
 
 ---
 

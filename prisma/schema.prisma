@@ -1,0 +1,91 @@
+// prisma/schema.prisma
+// Neon Postgres (free tier) — standard Auth.js v5 + Prisma adapter schema
+// extended with Role, LoginEvent, and lastLoginAt.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // Neon requires connection pooling for serverless; use the pooled URL here.
+  // If you have a direct URL for migrations, set directUrl = env("DIRECT_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ─── Role Enum ────────────────────────────────────────────────────────────────
+enum Role {
+  USER
+  ADMIN
+}
+
+// ─── Auth.js required models ─────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?   // null for OAuth-only users
+  role          Role      @default(USER)
+  lastLoginAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts    Account[]
+  sessions    Session[]
+  loginEvents LoginEvent[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─── Login Event tracking ─────────────────────────────────────────────────────
+
+model LoginEvent {
+  id         String   @id @default(cuid())
+  userId     String
+  provider   String   // "google" | "credentials"
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+}
